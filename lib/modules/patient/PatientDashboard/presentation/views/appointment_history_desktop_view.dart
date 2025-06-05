@@ -137,7 +137,7 @@ class _PatientAppointmentHistoryDesktopViewState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Doctor: $doctor",
+                  Text("Doctor: Dr $doctor",
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),

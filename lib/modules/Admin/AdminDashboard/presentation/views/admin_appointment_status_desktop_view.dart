@@ -120,7 +120,7 @@ We look forward to serving you with the best care.
 If you have any questions, feel free to contact us.
 
 Warm regards,  
-👨‍⚕️ ${widget.userData['user_name']}
+👨‍⚕️  ${widget.userData['user_name']}
 """
           : """
 ⚠️ *Appointment Update*

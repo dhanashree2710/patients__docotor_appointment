@@ -99,26 +99,33 @@ class _AppointmentListMobileViewState extends State<AppointmentListMobileView> {
 
 Hello *$name*,
 
-Your appointment has been *confirmed*.
+We’re pleased to inform you that your appointment has been *successfully confirmed*.
 
 📅 *Date:* $formattedDate  
 🕒 *Time:* $formattedTime
 
-👨‍⚕️ ${widget.userData['user_name']}
+We look forward to serving you with the best care.  
+If you have any questions, feel free to contact us.
+
+Warm regards,  
+👨‍⚕️ Dr ${widget.userData['user_name']}
 """
           : """
 ⚠️ *Appointment Update*
 
 Dear *$name*,
 
-Your appointment on:
+We regret to inform you that your appointment scheduled for:
 
 📅 *Date:* $formattedDate  
 🕒 *Time:* $formattedTime
 
-has been *declined*.
+has been *politely declined* due to unforeseen circumstances.
 
-👨‍⚕️ Dr. ${widget.userData['user_name']}
+Please feel free to reschedule at your convenience.
+
+Kind regards,  
+👨‍⚕️ Dr ${widget.userData['user_name']}
 """;
 
       final encodedMessage = Uri.encodeComponent(message);
