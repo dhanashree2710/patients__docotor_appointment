@@ -39,7 +39,6 @@ class _AppointmentListMobileViewState extends State<AppointmentListMobileView> {
         .eq('doctors_id', widget.doctorId)
         .order('date', ascending: true)
         .order('time', ascending: true);
-
     final appointments = List<Map<String, dynamic>>.from(response);
 
     List<Map<String, dynamic>> filteredAppointments = [];
@@ -47,28 +46,26 @@ class _AppointmentListMobileViewState extends State<AppointmentListMobileView> {
     for (var appointment in appointments) {
       final date = DateTime.tryParse(appointment['date']);
       final time = DateFormat("HH:mm:ss").parse(appointment['time']);
-      final appointmentDateTime = DateTime(
-        date!.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
+      final appointmentDateTime =
+          DateTime(date!.year, date.month, date.day, time.hour, time.minute);
 
       final status = appointment['status'];
 
-      // Auto-reject if still pending and past
       if (status == 'pending' && appointmentDateTime.isBefore(now)) {
         await supabase.from('appointment').update({'status': 'rejected'}).eq(
             'appointment_id', appointment['appointment_id']);
       }
 
-      // Keep only those within the last 48 hours
-      if (appointmentDateTime.isAfter(startTime) &&
-          appointmentDateTime.isBefore(now)) {
+      if (appointmentDateTime.isAfter(startTime)) {
         filteredAppointments.add(appointment);
       }
     }
+
+    // Sort by status: pending → approved → rejected
+    filteredAppointments.sort((a, b) {
+      const statusOrder = {'pending': 0, 'approved': 1, 'rejected': 2};
+      return statusOrder[a['status']]!.compareTo(statusOrder[b['status']]!);
+    });
 
     return filteredAppointments;
   }

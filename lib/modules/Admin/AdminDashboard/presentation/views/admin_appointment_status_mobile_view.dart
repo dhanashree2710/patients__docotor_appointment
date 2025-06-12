@@ -40,36 +40,33 @@ class _AdminAppointmentStatusMobileViewState
         .eq('admin_id', widget.adminId)
         .order('date', ascending: true)
         .order('time', ascending: true);
-
     final appointments = List<Map<String, dynamic>>.from(response);
+
     List<Map<String, dynamic>> filteredAppointments = [];
 
     for (var appointment in appointments) {
       final date = DateTime.tryParse(appointment['date']);
       final time = DateFormat("HH:mm:ss").parse(appointment['time']);
-      final appointmentDateTime = DateTime(
-        date!.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
+      final appointmentDateTime =
+          DateTime(date!.year, date.month, date.day, time.hour, time.minute);
 
-      final isExpired = appointmentDateTime.isBefore(now);
       final status = appointment['status'];
 
-      // Mark expired pending appointments as rejected
-      if (status == 'pending' && isExpired) {
+      if (status == 'pending' && appointmentDateTime.isBefore(now)) {
         await supabase.from('appointment').update({'status': 'rejected'}).eq(
             'appointment_id', appointment['appointment_id']);
       }
 
-      // Filter: past 48 hours only
-      if (appointmentDateTime.isAfter(startTime) &&
-          appointmentDateTime.isBefore(now)) {
+      if (appointmentDateTime.isAfter(startTime)) {
         filteredAppointments.add(appointment);
       }
     }
+
+    // Sort by status: pending → approved → rejected
+    filteredAppointments.sort((a, b) {
+      const statusOrder = {'pending': 0, 'approved': 1, 'rejected': 2};
+      return statusOrder[a['status']]!.compareTo(statusOrder[b['status']]!);
+    });
 
     return filteredAppointments;
   }

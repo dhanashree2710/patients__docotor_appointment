@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
+// ... All imports stay same
+
 class AppointmentListDesktopView extends StatefulWidget {
   final String doctorId;
   final Map<String, dynamic> userData;
@@ -33,7 +35,7 @@ class _AppointmentListDesktopViewState
 
   Future<List<Map<String, dynamic>>> fetchAppointments() async {
     final now = DateTime.now();
-    final startTime = now.subtract(const Duration(hours: 48)); // 48 hours ago
+    final startTime = now.subtract(const Duration(hours: 48));
 
     final response = await supabase
         .from('appointment')
@@ -49,36 +51,32 @@ class _AppointmentListDesktopViewState
     for (var appointment in appointments) {
       final date = DateTime.tryParse(appointment['date']);
       final time = DateFormat("HH:mm:ss").parse(appointment['time']);
-      final appointmentDateTime = DateTime(
-        date!.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
+      final appointmentDateTime =
+          DateTime(date!.year, date.month, date.day, time.hour, time.minute);
 
       final status = appointment['status'];
 
-      // Auto-reject if still pending and past
       if (status == 'pending' && appointmentDateTime.isBefore(now)) {
         await supabase.from('appointment').update({'status': 'rejected'}).eq(
             'appointment_id', appointment['appointment_id']);
       }
 
-      // Keep only those within the last 48 hours
-      if (appointmentDateTime.isAfter(startTime) &&
-          appointmentDateTime.isBefore(now)) {
+      if (appointmentDateTime.isAfter(startTime)) {
         filteredAppointments.add(appointment);
       }
     }
+
+    // Sort by status: pending → approved → rejected
+    filteredAppointments.sort((a, b) {
+      const statusOrder = {'pending': 0, 'approved': 1, 'rejected': 2};
+      return statusOrder[a['status']]!.compareTo(statusOrder[b['status']]!);
+    });
 
     return filteredAppointments;
   }
 
   Future<void> updateStatusAndNotify(
-    Map<String, dynamic> appointment,
-    String newStatus,
-  ) async {
+      Map<String, dynamic> appointment, String newStatus) async {
     try {
       final phone = appointment['patient_phone'];
       final name = appointment['patient_name'];
@@ -94,9 +92,8 @@ class _AppointmentListDesktopViewState
         return;
       }
 
-      await supabase.from('appointment').update({
-        'status': newStatus,
-      }).eq('appointment_id', appointment['appointment_id']);
+      await supabase.from('appointment').update({'status': newStatus}).eq(
+          'appointment_id', appointment['appointment_id']);
 
       final formattedTime = _formatTime(time);
       final formattedDate = date.toString().substring(0, 10);
@@ -107,15 +104,12 @@ class _AppointmentListDesktopViewState
 
 Hello *$name*,
 
-We’re pleased to inform you that your appointment has been *successfully confirmed*.
+Your appointment has been *confirmed*.
 
-📅 *Date:* $formattedDate  
+🗓 *Date:* $formattedDate  
 🕒 *Time:* $formattedTime
 
-We look forward to serving you with the best care.  
-If you have any questions, feel free to contact us.
-
-Warm regards,  
+Regards,  
 👨‍⚕️ Dr ${widget.userData['user_name']}
 """
           : """
@@ -123,16 +117,14 @@ Warm regards,
 
 Dear *$name*,
 
-We regret to inform you that your appointment scheduled for:
+Your appointment on:
 
-📅 *Date:* $formattedDate  
+🗓 *Date:* $formattedDate  
 🕒 *Time:* $formattedTime
 
-has been *politely declined* due to unforeseen circumstances.
+has been *declined*.
 
-Please feel free to reschedule at your convenience.
-
-Kind regards,  
+Regards,  
 👨‍⚕️ Dr ${widget.userData['user_name']}
 """;
 
@@ -161,7 +153,7 @@ Kind regards,
   String _formatTime(String time) {
     try {
       final parsedTime = DateFormat("HH:mm:ss").parse(time);
-      return DateFormat.jm().format(parsedTime); // 12-hour with AM/PM
+      return DateFormat.jm().format(parsedTime);
     } catch (e) {
       return time;
     }

@@ -105,6 +105,7 @@ class _DoctorRegisterDesktopState extends State<DoctorRegisterDesktop> {
               isSuccess: false,
               title: 'Registration Failed',
               description: 'Could not create user.');
+
           return;
         }
 

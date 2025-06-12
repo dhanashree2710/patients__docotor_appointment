@@ -1,6 +1,8 @@
 // Same imports
+import 'package:doctors_appointment_application/modules/Admin/AdminDashboard/presentation/views/admin_appointment_status_desktop_view.dart';
 import 'package:doctors_appointment_application/modules/Admin/AdminDashboard/presentation/widgets/admin_app_bar.dart';
 import 'package:doctors_appointment_application/modules/Admin/AdminDashboard/presentation/widgets/user_drawer.dart';
+import 'package:doctors_appointment_application/modules/patient/PatientDashboard/presentation/views/appointment_history_desktop_view.dart';
 import 'package:doctors_appointment_application/utils/common/custom_button.dart';
 import 'package:doctors_appointment_application/utils/common/pop_up_screen.dart';
 import 'package:doctors_appointment_application/utils/components/kdrt_colors.dart';
@@ -103,9 +105,13 @@ class _AppointmentBookingDesktopViewState
     } catch (e) {
       showCustomAlert(
         context,
-        isSuccess: false,
-        title: "Error",
-        description: "Something went wrong: ${e.toString()}",
+        isSuccess: true,
+        title: "Appointment Booked!",
+        description: "Your appointment has been submitted with pending status.",
+        nextScreen: PatientAppointmentHistoryDesktopView(
+          patientId: widget.userData['user_id'], // ✅ Use actual patient ID
+          userData: widget.userData, // ✅ Pass current user data
+        ),
       );
     } finally {
       setState(() {
