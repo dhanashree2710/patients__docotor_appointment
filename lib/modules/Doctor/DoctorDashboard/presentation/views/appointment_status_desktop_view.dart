@@ -33,6 +33,7 @@ class _AppointmentListDesktopViewState
 
   Future<List<Map<String, dynamic>>> fetchAppointments() async {
     final now = DateTime.now();
+    final startTime = now.subtract(const Duration(hours: 48)); // 48 hours ago
 
     final response = await supabase
         .from('appointment')
@@ -42,6 +43,8 @@ class _AppointmentListDesktopViewState
         .order('time', ascending: true);
 
     final appointments = List<Map<String, dynamic>>.from(response);
+
+    List<Map<String, dynamic>> filteredAppointments = [];
 
     for (var appointment in appointments) {
       final date = DateTime.tryParse(appointment['date']);
@@ -54,25 +57,22 @@ class _AppointmentListDesktopViewState
         time.minute,
       );
 
-      final isExpired = appointmentDateTime.isBefore(now);
       final status = appointment['status'];
 
-      if (status == 'pending' && isExpired) {
-        // Auto-update to rejected if pending and expired
+      // Auto-reject if still pending and past
+      if (status == 'pending' && appointmentDateTime.isBefore(now)) {
         await supabase.from('appointment').update({'status': 'rejected'}).eq(
             'appointment_id', appointment['appointment_id']);
       }
+
+      // Keep only those within the last 48 hours
+      if (appointmentDateTime.isAfter(startTime) &&
+          appointmentDateTime.isBefore(now)) {
+        filteredAppointments.add(appointment);
+      }
     }
 
-    // Re-fetch updated data to reflect rejections
-    final updatedResponse = await supabase
-        .from('appointment')
-        .select()
-        .eq('doctors_id', widget.doctorId)
-        .order('date', ascending: true)
-        .order('time', ascending: true);
-
-    return List<Map<String, dynamic>>.from(updatedResponse);
+    return filteredAppointments;
   }
 
   Future<void> updateStatusAndNotify(

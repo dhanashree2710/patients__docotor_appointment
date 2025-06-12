@@ -39,6 +39,7 @@ class _AdminAppointmentStatusDesktopViewState
 
   Future<List<Map<String, dynamic>>> fetchAppointments() async {
     final now = DateTime.now();
+    final startTime = now.subtract(const Duration(hours: 48)); // 48 hours ago
 
     final response = await supabase
         .from('appointment')
@@ -48,6 +49,7 @@ class _AdminAppointmentStatusDesktopViewState
         .order('time', ascending: true);
 
     final appointments = List<Map<String, dynamic>>.from(response);
+    List<Map<String, dynamic>> filteredAppointments = [];
 
     for (var appointment in appointments) {
       final date = DateTime.tryParse(appointment['date']);
@@ -63,20 +65,20 @@ class _AdminAppointmentStatusDesktopViewState
       final isExpired = appointmentDateTime.isBefore(now);
       final status = appointment['status'];
 
+      // Mark expired pending appointments as rejected
       if (status == 'pending' && isExpired) {
         await supabase.from('appointment').update({'status': 'rejected'}).eq(
             'appointment_id', appointment['appointment_id']);
       }
+
+      // Filter: past 48 hours only
+      if (appointmentDateTime.isAfter(startTime) &&
+          appointmentDateTime.isBefore(now)) {
+        filteredAppointments.add(appointment);
+      }
     }
 
-    final updatedResponse = await supabase
-        .from('appointment')
-        .select()
-        .eq('admin_id', widget.adminId)
-        .order('date', ascending: true)
-        .order('time', ascending: true);
-
-    return List<Map<String, dynamic>>.from(updatedResponse);
+    return filteredAppointments;
   }
 
   Future<void> updateStatusAndNotify(
@@ -120,7 +122,7 @@ We look forward to serving you with the best care.
 If you have any questions, feel free to contact us.
 
 Warm regards,  
-👨‍⚕️  ${widget.userData['user_name']}
+👨‍⚕️ Admin ${widget.userData['user_name']}
 """
           : """
 ⚠️ *Appointment Update*
@@ -137,7 +139,7 @@ has been *politely declined* due to unforeseen circumstances.
 Please feel free to reschedule at your convenience.
 
 Kind regards,  
-👨‍⚕️  ${widget.userData['user_name']}
+👨‍⚕️ Admin ${widget.userData['user_name']}
 """;
 
       final encodedMessage = Uri.encodeComponent(message);
