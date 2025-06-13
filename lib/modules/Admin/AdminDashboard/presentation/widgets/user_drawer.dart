@@ -110,15 +110,15 @@ class _UserDrawerState extends State<UserDrawer> {
                         )),
               ),
             ),
-            _buildGradientTile(
-              icon: Icons.event_available,
-              title: 'Book Appointment',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => PatientHomePage(userData: widget.userData)),
-              ),
-            ),
+            // _buildGradientTile(
+            //   icon: Icons.event_available,
+            //   title: 'Book Appointment',
+            //   onTap: () => Navigator.push(
+            //     context,
+            //     MaterialPageRoute(
+            //         builder: (_) => PatientHomePage(userData: widget.userData)),
+            //   ),
+            // ),
             // _buildGradientTile(
             //     icon: Icons.medical_services,
             //     title: 'Patient Records',
