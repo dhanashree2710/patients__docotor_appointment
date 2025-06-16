@@ -1,5 +1,6 @@
 import 'package:doctors_appointment_application/modules/Admin/AdminDashboard/presentation/views/home_desktop_view.dart';
 import 'package:doctors_appointment_application/modules/Doctor/DoctorDashboard/presentation/views/home_desktop_view.dart';
+import 'package:doctors_appointment_application/modules/Login/presentation/widgets/forgot_password.dart';
 import 'package:doctors_appointment_application/modules/Register/presentation/pages/register_page.dart';
 import 'package:doctors_appointment_application/modules/Register/presentation/views/register_desktop_view.dart';
 
@@ -165,7 +166,10 @@ class _LoginDesktopViewState extends State<LoginDesktopView> {
                 shaderCallback: (bounds) => gradientColor.createShader(bounds),
                 child: TextButton(
                   onPressed: () {
-                    //resetPassword(_emailController.text);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ForgotPasswordView()));
                   },
                   child: const Text(
                     "Forgot Password",

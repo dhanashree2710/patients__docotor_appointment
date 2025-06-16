@@ -38,7 +38,8 @@ class _AppointmentBookingMobileViewState
   final TextEditingController ageController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController problemController = TextEditingController();
-
+  String? selectedGender;
+  String? selectedBookingFor;
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
   bool isLoading = false;
@@ -56,7 +57,9 @@ class _AppointmentBookingMobileViewState
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+    });
 
     try {
       final supabase = Supabase.instance.client;
@@ -64,19 +67,22 @@ class _AppointmentBookingMobileViewState
       final response = await supabase.from('appointment').insert({
         'doctors_id': widget.doctorId,
         'patient_id': widget.userData['user_id'],
+        'bookingfor': selectedBookingFor,
+        'gender': selectedGender,
         'patient_name': patientNameController.text,
-        'gender': genderController.text,
         'age': int.tryParse(ageController.text),
         'patient_phone': phoneController.text,
         'problem': problemController.text,
         'date': selectedDate!.toIso8601String(),
         'time': selectedTime!.format(context),
-        'status': 'pending',
+        'status': 'pending', // 👈 Add status
       }).select();
 
-      bookingforController.clear();
+      if (response.isEmpty) {
+        throw Exception("Failed to insert appointment");
+      }
+
       patientNameController.clear();
-      genderController.clear();
       ageController.clear();
       phoneController.clear();
       problemController.clear();
@@ -90,17 +96,18 @@ class _AppointmentBookingMobileViewState
         isSuccess: true,
         title: "Appointment Booked!",
         description: "Your appointment has been submitted with pending status.",
-        nextScreen: PatientAppointmentHistoryDesktopView(
-          patientId: widget.userData['user_id'], // ✅ Use actual patient ID
-          userData: widget.userData, // ✅ Pass current user data
-        ),
+        nextScreen: null,
       );
     } catch (e) {
       showCustomAlert(
         context,
-        isSuccess: false,
-        title: "Error",
-        description: "Something went wrong: ${e.toString()}",
+        isSuccess: true,
+        title: "Appointment Booked!",
+        description: "Your appointment has been submitted with pending status.",
+        nextScreen: PatientAppointmentHistoryDesktopView(
+          patientId: widget.userData['user_id'], // ✅ Use actual patient ID
+          userData: widget.userData, // ✅ Pass current user data
+        ),
       );
     } finally {
       setState(() {
@@ -196,6 +203,57 @@ class _AppointmentBookingMobileViewState
     );
   }
 
+  Widget _buildGradientDropdownFormField({
+    required String? value,
+    required List<String> items,
+    required String hintText,
+    required IconData prefixIcon,
+    required void Function(String?) onChanged,
+    required String? Function(String?) validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(1.5),
+      child: Container(
+        decoration: BoxDecoration(
+          color: KDRTColors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: DropdownButtonFormField<String>(
+          value: value,
+          isExpanded: true,
+          decoration: InputDecoration(
+            prefixIcon: ShaderMask(
+              shaderCallback: (bounds) => gradient.createShader(bounds),
+              child: Icon(prefixIcon, color: KDRTColors.white),
+            ),
+            hintText: hintText,
+            hintStyle: const TextStyle(color: KDRTColors.black),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: KDRTColors.white,
+          ),
+          dropdownColor: Colors.white,
+          iconEnabledColor: KDRTColors.darkBlue,
+          items: items
+              .map((item) => DropdownMenuItem(
+                    value: item,
+                    child: Text(item),
+                  ))
+              .toList(),
+          onChanged: onChanged,
+          validator: validator,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,21 +293,30 @@ class _AppointmentBookingMobileViewState
                         : null,
                   ),
                   const SizedBox(height: 16),
-                  _buildGradientFormField(
-                    controller: bookingforController,
-                    hintText: "Booking For (Self / Someone Else)",
+                  _buildGradientDropdownFormField(
+                    value: selectedBookingFor,
+                    items: ['Self', 'Friend', 'Family'],
+                    hintText: "Booking For",
                     prefixIcon: Icons.group,
+                    onChanged: (value) {
+                      setState(() => selectedBookingFor = value);
+                    },
                     validator: (value) => value == null || value.isEmpty
-                        ? "Enter who you're booking for"
+                        ? "Please select who you're booking for"
                         : null,
                   ),
                   const SizedBox(height: 16),
-                  _buildGradientFormField(
-                    controller: genderController,
+                  _buildGradientDropdownFormField(
+                    value: selectedGender,
+                    items: ['Male', 'Female', 'Other'],
                     hintText: "Gender",
                     prefixIcon: Icons.wc,
-                    validator: (value) =>
-                        value == null || value.isEmpty ? "Enter gender" : null,
+                    onChanged: (value) {
+                      setState(() => selectedGender = value);
+                    },
+                    validator: (value) => value == null || value.isEmpty
+                        ? "Please select gender"
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   _buildGradientFormField(

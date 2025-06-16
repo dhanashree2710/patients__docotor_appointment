@@ -39,6 +39,7 @@ class _AppointmentListMobileViewState extends State<AppointmentListMobileView> {
         .eq('doctors_id', widget.doctorId)
         .order('date', ascending: true)
         .order('time', ascending: true);
+
     final appointments = List<Map<String, dynamic>>.from(response);
 
     List<Map<String, dynamic>> filteredAppointments = [];
@@ -46,24 +47,31 @@ class _AppointmentListMobileViewState extends State<AppointmentListMobileView> {
     for (var appointment in appointments) {
       final date = DateTime.tryParse(appointment['date']);
       final time = DateFormat("HH:mm:ss").parse(appointment['time']);
-      final appointmentDateTime =
-          DateTime(date!.year, date.month, date.day, time.hour, time.minute);
+      final appointmentDateTime = DateTime(
+        date!.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
 
       final status = appointment['status'];
 
-      if (status == 'pending' && appointmentDateTime.isBefore(now)) {
-        await supabase.from('appointment').update({'status': 'rejected'}).eq(
+      // ❌ Skip rescheduling if within last 48 hours
+      if (status == 'pending' && appointmentDateTime.isBefore(startTime)) {
+        await supabase.from('appointment').update({'status': 'rescheduled'}).eq(
             'appointment_id', appointment['appointment_id']);
       }
 
+      // ✅ Show appointments only from last 48 hours onwards
       if (appointmentDateTime.isAfter(startTime)) {
         filteredAppointments.add(appointment);
       }
     }
 
-    // Sort by status: pending → approved → rejected
+    // Sort: pending → approved → rescheduled
     filteredAppointments.sort((a, b) {
-      const statusOrder = {'pending': 0, 'approved': 1, 'rejected': 2};
+      const statusOrder = {'pending': 0, 'approved': 1, 'rescheduled': 2};
       return statusOrder[a['status']]!.compareTo(statusOrder[b['status']]!);
     });
 
@@ -82,33 +90,54 @@ class _AppointmentListMobileViewState extends State<AppointmentListMobileView> {
         _showSnack('Patient phone number is missing');
         return;
       }
+      if (name == null || date == null || time == null) {
+        _showSnack('Missing appointment information');
+        return;
+      }
 
-      await supabase.from('appointment').update({
-        'status': newStatus,
-      }).eq('appointment_id', appointment['appointment_id']);
+      // ✅ Update status
+      await supabase.from('appointment').update({'status': newStatus}).eq(
+          'appointment_id', appointment['appointment_id']);
 
       final formattedTime = _formatTime(time);
       final formattedDate = date.toString().substring(0, 10);
 
+      // ✅ Fetch doctor's location link
+      final doctorId = widget.doctorId;
+      final locationResponse = await supabase
+          .from('doctors')
+          .select('doctors_location')
+          .eq('doctors_id', doctorId)
+          .maybeSingle();
+
+      final locationUrl = locationResponse != null
+          ? locationResponse['doctors_location']
+          : null;
+
+      final locationText =
+          locationUrl != null ? "\n📍 *Location:* $locationUrl" : '';
+
+      // ✅ Build WhatsApp message
       final message = newStatus == 'approved'
           ? """
-🌟 *Appointment Confirmed*
+✅ *Appointment Confirmed*
 
-Hello *$name*,
+Dear *$name*,
 
-We’re pleased to inform you that your appointment has been *successfully confirmed*.
+Your appointment has been *successfully confirmed*. We look forward to seeing you!
 
 📅 *Date:* $formattedDate  
 🕒 *Time:* $formattedTime
+📍  *Location:* $locationText
 
-We look forward to serving you with the best care.  
+🧑‍⚕️ *Doctor:* Dr. ${widget.userData['user_name']}
+
 If you have any questions, feel free to contact us.
 
-Warm regards,  
-👨‍⚕️ Dr ${widget.userData['user_name']}
+_Thank you for choosing our services!_
 """
           : """
-⚠️ *Appointment Update*
+❌ *Appointment Declined*
 
 Dear *$name*,
 
@@ -116,13 +145,15 @@ We regret to inform you that your appointment scheduled for:
 
 📅 *Date:* $formattedDate  
 🕒 *Time:* $formattedTime
+📍  *Location:* $locationText
 
 has been *politely declined* due to unforeseen circumstances.
 
 Please feel free to reschedule at your convenience.
 
-Kind regards,  
-👨‍⚕️ Dr ${widget.userData['user_name']}
+🧑‍⚕️ *Doctor:* Dr. ${widget.userData['user_name']}
+
+We apologize for the inconvenience.
 """;
 
       final encodedMessage = Uri.encodeComponent(message);
@@ -139,7 +170,7 @@ Kind regards,
         _appointmentsFuture = fetchAppointments();
       });
     } catch (e) {
-      _showSnack('Error: $e');
+      _showSnack('Error updating status: $e');
     }
   }
 
@@ -241,7 +272,7 @@ Kind regards,
                             fontWeight: FontWeight.bold,
                             color: status == 'approved'
                                 ? Colors.green
-                                : status == 'rejected'
+                                : status == 'rescheduled'
                                     ? Colors.red
                                     : Colors.orange,
                           ),
@@ -265,10 +296,10 @@ Kind regards,
                             Expanded(
                               child: GradientOutlineButton(
                                 onPressed: status == 'pending'
-                                    ? () =>
-                                        updateStatusAndNotify(item, 'rejected')
+                                    ? () => updateStatusAndNotify(
+                                        item, 'rescheduled')
                                     : null,
-                                label: "Reject",
+                                label: "Reschedule",
                                 icon: Icons.cancel,
                                 textColor: Colors.red,
                                 gradient: gradientColor,

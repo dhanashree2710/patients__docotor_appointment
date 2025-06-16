@@ -17,11 +17,11 @@
 //   bool _obscureNew = true;
 //   bool _obscureConfirm = true;
 
-//   final LinearGradient gradient = const LinearGradient(
-//     colors: [Color(0xFF1A2980), Color(0xFF26D0CE)],
-//     begin: Alignment.topLeft,
-//     end: Alignment.bottomRight,
-//   );
+  // final LinearGradient gradient = const LinearGradient(
+  //   colors: [Color(0xFF1A2980), Color(0xFF26D0CE)],
+  //   begin: Alignment.topLeft,
+  //   end: Alignment.bottomRight,
+  // );
 
 //   @override
 //   Widget build(BuildContext context) {

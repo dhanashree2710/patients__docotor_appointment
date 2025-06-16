@@ -89,7 +89,7 @@ class _PatientAppointmentHistoryDesktopViewState
     } else if (status == 'rejected') {
       animationPath = 'assets/error.json';
       statusColor = Colors.red;
-      statusText = 'REJECTED';
+      statusText = 'RESCHEDULE';
     }
 
     return Container(
