@@ -37,49 +37,98 @@ class _AppointmentListDesktopViewState
     final now = DateTime.now();
     final startTime = now.subtract(const Duration(hours: 48)); // 48 hours ago
 
-    final response = await supabase
-        .from('appointment')
-        .select()
-        .eq('doctors_id', widget.doctorId)
-        .order('date', ascending: true)
-        .order('time', ascending: true);
+    print("📌 Doctor ID: ${widget.doctorId}");
 
-    final appointments = List<Map<String, dynamic>>.from(response);
+    try {
+      final response = await supabase
+          .from('appointment')
+          .select()
+          .eq('doctors_id', widget.doctorId)
+          .order('date', ascending: true)
+          .order('time', ascending: true);
 
-    List<Map<String, dynamic>> filteredAppointments = [];
+      print("📥 Raw Supabase response: $response");
 
-    for (var appointment in appointments) {
-      final date = DateTime.tryParse(appointment['date']);
-      final time = DateFormat("HH:mm:ss").parse(appointment['time']);
-      final appointmentDateTime = DateTime(
-        date!.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
+      final appointments = List<Map<String, dynamic>>.from(response);
 
-      final status = appointment['status'];
+      print("✅ Total appointments fetched: ${appointments.length}");
 
-      // ❌ Skip rescheduling if within last 48 hours
-      if (status == 'pending' && appointmentDateTime.isBefore(startTime)) {
-        await supabase.from('appointment').update({'status': 'rescheduled'}).eq(
-            'appointment_id', appointment['appointment_id']);
+      List<Map<String, dynamic>> filteredAppointments = [];
+
+      for (var appointment in appointments) {
+        try {
+          print("🔍 Processing appointment: ${appointment['appointment_id']}");
+
+          final dateString = appointment['date'];
+          final timeString = appointment['time'];
+
+          print("🗓 Date string: $dateString");
+          print("⏰ Time string: $timeString");
+
+          final date = DateTime.tryParse(dateString);
+          final time = DateFormat("HH:mm:ss").parse(timeString);
+
+          if (date == null) {
+            print(
+                "❌ Failed to parse date for appointment: ${appointment['appointment_id']}");
+            continue;
+          }
+
+          final appointmentDateTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+
+          print("🧾 Appointment DateTime: $appointmentDateTime");
+
+          final status = appointment['status'];
+          print("📦 Status: $status");
+
+          // Reschedule if older than 48 hours and still pending
+          if (status == 'pending' && appointmentDateTime.isBefore(startTime)) {
+            print(
+                "🔄 Updating status to rescheduled for ID: ${appointment['appointment_id']}");
+            await supabase
+                .from('appointment')
+                .update({'status': 'rescheduled'}).eq(
+                    'appointment_id', appointment['appointment_id']);
+          }
+
+          // Show only from last 48 hours and valid statuses
+          if (appointmentDateTime.isAfter(startTime) &&
+              ['pending', 'approved', 'rescheduled', 'rejected']
+                  .contains(status)) {
+            filteredAppointments.add(appointment);
+          }
+        } catch (e) {
+          print("❗ Error processing appointment: $e");
+        }
       }
 
-      // ✅ Show appointments only from last 48 hours onwards
-      if (appointmentDateTime.isAfter(startTime)) {
-        filteredAppointments.add(appointment);
-      }
+      // Sort: pending → approved → rescheduled → rejected
+      filteredAppointments.sort((a, b) {
+        const statusOrder = {
+          'pending': 0,
+          'approved': 1,
+          'rescheduled': 2,
+        };
+
+        final aStatus = statusOrder[a['status']] ?? 99;
+        final bStatus = statusOrder[b['status']] ?? 99;
+
+        return aStatus.compareTo(bStatus);
+      });
+
+      print(
+          "✅ Final filtered appointments count: ${filteredAppointments.length}");
+      return filteredAppointments;
+    } catch (e) {
+      print("❌ Error fetching appointments: $e");
+      return [];
     }
-
-    // Sort: pending → approved → rescheduled
-    filteredAppointments.sort((a, b) {
-      const statusOrder = {'pending': 0, 'approved': 1, 'rescheduled': 2};
-      return statusOrder[a['status']]!.compareTo(statusOrder[b['status']]!);
-    });
-
-    return filteredAppointments;
   }
 
   Future<void> updateStatusAndNotify(
